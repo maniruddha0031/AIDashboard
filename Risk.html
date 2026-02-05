@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Risk Analysis Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+body {
+  font-family: 'Inter', sans-serif;
+  background:#eef2f7;
+}
+
+/* ---------------- TILE BASE ---------------- */
+.tile {
+  background: linear-gradient(180deg,#ffffff,#f9fbfd);
+  border-radius:20px;
+  border:1px solid #e5e7eb;
+  box-shadow:0 10px 20px rgba(0,0,0,.04);
+  transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.tile:hover {
+  transform:translateY(-4px);
+  box-shadow:0 20px 40px rgba(0,0,0,.12);
+}
+
+/* ---------------- HERO BANNER (MATCHING SCREENSHOT) ---------------- */
+.hero-banner {
+  background: #0f172a; /* Exact deep slate/navy from screenshot */
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  height: 110px;
+  color: white;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  justify-content: space-between; /* Spread content across full width */
+}
+
+.hero-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255,255,255,0.1);
+}
+
+.status-badge-high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* AI Index Gauge with Thumb */
+.gauge-container {
+  position: relative;
+  width: 160px;
+  height: 6px;
+  background: #334155;
+  border-radius: 999px;
+  margin-top: 10px;
+}
+.gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f43f5e, #fbbf24, #10b981);
+}
+.gauge-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border: 3px solid #0f172a;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+/* ---------------- SECTION HEADERS ---------------- */
+.section-header {
+  padding:8px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.section-header span {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+}
+
+.section-header i {
+  color: #64748b; 
+}
+
+/* ---------------- INDEX BARS ---------------- */
+.index-bar-bg {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+/* ---------------- KPI ROWS ---------------- */
+.kpi-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 0;
+  font-size:13px;
+}
+
+.special-row {
+  margin: 8px -20px -20px -20px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.special-labor      { background: #fff1f2; border-top: 1px solid #fecaca; color: #991b1b; }
+.special-inventory  { background: #fff7ed; border-top: 1px solid #fed7aa; color: #9a3412; }
+.special-compliance { background: #fff1f2; border-top: 1px solid #fecaca; color: #9f1239; }
+.special-schedule   { background: #fefce8; border-top: 1px solid #fef08a; color: #854d0e; }
+.special-sales      { background: #f0f9ff; border-top: 1px solid #bae6fd; color: #075985; }
+
+.dot {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+}
+
+/* ---------------- LIVE PULSE ---------------- */
+.pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+/* Smooth expand animation for custom range */
+.range-animate{
+    max-width:0;
+    opacity:0;
+    overflow:hidden;
+    white-space:nowrap;
+    transition:max-width .28s ease, opacity .2s ease;
+}
+
+.range-animate.show{
+    max-width:220px;
+    opacity:1;
+}
+::-webkit-scrollbar {
+    width:6px;
+}
+::-webkit-scrollbar-track {
+    background:#f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background:#cbd5e0;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body class="flex h-screen">
+
+    <aside id="sidebar" class="bg-[#0f1115] text-gray-400 w-64 flex-shrink-0 flex flex-col transition-all duration-300 z-50">
+        <div class="p-6 flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i data-lucide="cpu" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="text-white font-bold text-xl sidebar-text">AI Dashboard</span>
+        </div>
+
+        <nav class="flex-1 mt-4">
+            <div class="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sidebar-text">Analytics</div>
+            <a href="index.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-health">
+                <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Store Health</span>
+            </a>
+            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-compliance">
+                <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Compliance</span>
+            </a>
+            <a href="Risk.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-risk">
+                <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Risk Analysis</span>
+            </a>
+            <a href="Timeloss.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-loss">
+                <i data-lucide="clock-alert" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Time Loss</span>
+            </a>
+			<a href="DAR.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-dar">
+    <i data-lucide="clipboard-list" class="w-5 h-5 mr-3"></i>
+    <span class="sidebar-text">DAR Dashboard</span>
+</a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800">
+            <button onclick="toggleSidebar()" class="flex items-center gap-3 w-full p-2 hover:bg-gray-800 rounded transition-colors">
+                <i data-lucide="chevron-left" id="collapse-icon" class="w-5 h-5"></i>
+                <span class="sidebar-text">Collapse Menu</span>
+            </button>
+        </div>
+    </aside>
+<div class="flex-1 flex flex-col min-w-0 relative">
+        <header class="bg-[#0f1115] text-white h-16 flex items-center justify-between px-8 border-b border-gray-800 flex-shrink-0">
+            <div class="flex items-center gap-4">
+
+                <div class="flex items-center text-blue-400">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold leading-tight tracking-tight uppercase">Risk Analysis Dashboard</h2>
+                    <p class="text-[9px] text-gray-400 uppercase font-bold tracking-[0.15em] opacity-80">WORKFORCE RISK & LABOR MANAGEMENT</p>
+                </div>
+								<div class="flex items-center gap-3 ml-6 transition-all duration-300 ease-out">
+
+
+    <!-- Store Dropdown -->
+    <select class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+        <option>Store 001</option>
+        <option>Store 045</option>
+        <option>Store 210</option>
+    </select>
+
+    <!-- Range Dropdown -->
+    <select id="rangeSelect"
+onchange="handleRangeChange(this.value)"
+class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+<option value="today">Today</option>
+<option value="weekly">Weekly</option>
+<option value="custom">Custom Range</option>
+    </select>
+
+    <!-- Hidden Date Range -->
+    <div id="customRange" class="range-animate flex items-center gap-2">
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+        <span class="text-gray-400 text-xs">to</span>
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+    </div>
+
+</div>
+            </div>
+			<!-- Store + Date Filters -->
+
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-2 text-sm text-gray-300 bg-gray-900 px-3 py-1.5 rounded-full">
+                    <i data-lucide="sun" class="w-4 h-4 text-yellow-500"></i>
+                    <span>72°F Sunny</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm font-mono tracking-tighter bg-gray-900 px-3 py-1.5 rounded-full min-w-[100px] justify-center">
+                    <i data-lucide="clock" class="w-4 h-4 text-blue-400"></i>
+                    <span id="live-clock">00:00:00</span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs">JD</div>
+            </div>
+        </header>
+
+<main class="flex-1 overflow-y-auto bg-[#F4F7FB] p-6 space-y-6 custom-scrollbar">
+
+
+
+<!-- ===================== HERO BANNER (MATCHING SCREENSHOT) ===================== -->
+<section class="hero-banner mb-6">
+  <!-- Section 1: Label and Title -->
+  <div class="flex flex-col min-w-[280px]">
+    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-1">Operational Summary</span>
+    <h2 class="text-[26px] font-black text-white uppercase tracking-tight leading-none">Risk Analysis Summary</h2>
+  </div>
+
+  <div class="hero-divider"></div>
+
+  <!-- Section 2: Heartbeat -->
+  <div class="px-8">
+    <svg width="70" height="35" viewBox="0 0 60 30" class="text-red-500 opacity-90">
+      <path d="M0 15 L20 15 L24 5 L28 25 L32 10 L36 20 L40 15 L60 15" fill="none" stroke="currentColor" stroke-width="2.5" />
+    </svg>
+  </div>
+
+  <!-- Section 3: Index Percentage and Gauge -->
+  <div class="flex flex-col items-center flex-grow">
+    <div class="flex items-center gap-5 mb-1">
+        <span class="text-[52px] font-black text-white tracking-tighter leading-none">72%</span>
+        <span class="status-badge-high">High Risk</span>
+    </div>
+    <div class="flex flex-col items-center">
+        <div class="gauge-container">
+            <div class="gauge-fill" style="width: 72%"></div>
+            <div class="gauge-thumb" style="left: 72%"></div>
+        </div>
+        <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] mt-3">AI Verified Index</span>
+    </div>
+  </div>
+
+  <div class="hero-divider mx-12"></div>
+
+  <!-- Section 4: Last Week -->
+  <div class="flex flex-col min-w-[120px]">
+    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Last Week</span>
+    <div class="flex items-center gap-2">
+        <span class="text-[24px] font-black text-emerald-400 tracking-tight">+8.1 pts</span>
+        <i data-lucide="trending-up" class="w-6 h-6 text-emerald-400"></i>
+    </div>
+  </div>
+
+  <div class="hero-divider mx-10"></div>
+
+  <!-- Section 5: Last Year -->
+  <div class="flex flex-col min-w-[120px]">
+    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Last Year</span>
+    <div class="flex items-center gap-2">
+        <span class="text-[24px] font-black text-emerald-400 tracking-tight">+12.4 pts</span>
+        <i data-lucide="trending-up" class="w-6 h-6 text-emerald-400"></i>
+    </div>
+  </div>
+
+  <!-- Section 6: Live Sync and Refresh -->
+  <div class="flex items-center gap-6 ml-8">
+    <div class="hero-divider"></div>
+    <div class="flex flex-col text-right">
+      <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Live Operational Sync</span>
+      <span id="banner-timestamp" class="text-[12px] font-bold text-slate-400 tracking-wider">00:00:00 PM</span>
+    </div>
+    <div class="p-3 bg-slate-800 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-700 transition-all shadow-lg">
+      <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RISK SECTIONS ===================== -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+<!-- LABOR -->
+<div class="tile flex flex-col">
+  <div class="h-1 w-full bg-[#ef4444] mx-5 mt-0"></div>
+  <div class="p-5 pt-3">
+    <div class="section-header">
+      <span class="flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Labor Risk</span>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-4">
+      <div class="text-4xl font-black text-slate-900 leading-none">75%</div>
+      <div class="flex flex-col">
+        <span class="status-badge-high">High Risk</span>
+        <span class="text-[10px] font-extrabold text-red-500 uppercase tracking-tighter mt-0.5">+3.2% LW</span>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="index-bar-bg">
+        <div class="h-full bg-red-500" style="width: 75%"></div>
+      </div>
+    </div>
+
+    <div class="space-y-0.5">
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Unauthorized OT</span><b class="font-black text-slate-900">42 hrs</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Missed Punches</span><b class="font-black text-slate-900">18</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-yellow-500"></span>Manual Edits</span><b class="font-black text-slate-900">7.6%</b></div>
+      <div class="special-row special-labor">
+          <span class="flex items-center gap-2 font-black text-[12px]"><i data-lucide="shield-check" class="w-4 h-4"></i> Clopening Exposure</span>
+          <span class="font-black text-lg flex items-center gap-1">82% <span class="text-[10px] text-red-500"><i data-lucide="arrow-up" class="inline w-3 h-3"></i> 3.2%</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTORY -->
+<div class="tile flex flex-col">
+  <div class="h-1 w-full bg-[#f97316] mx-5 mt-0"></div>
+  <div class="p-5 pt-3">
+    <div class="section-header">
+      <span class="flex items-center gap-2"><i data-lucide="package" class="w-5 h-5"></i> Inventory Risk</span>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-4">
+      <div class="text-4xl font-black text-slate-900 leading-none">68%</div>
+      <div class="flex flex-col">
+        <span class="px-2 py-0.5 border border-orange-500 text-orange-500 text-[10px] font-black rounded uppercase">Elevated</span>
+        <span class="text-[10px] font-extrabold text-orange-500 uppercase tracking-tighter mt-0.5">+1.1% LW</span>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="index-bar-bg">
+        <div class="h-full bg-orange-500" style="width: 68%"></div>
+      </div>
+    </div>
+
+    <div class="space-y-0.5">
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-orange-500"></span>Food Cost Var</span><b class="font-black text-slate-900">+1.8%</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Waste Events</span><b class="font-black text-slate-900">126</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Waste Cost</span><b class="font-black text-slate-900">$22.8K</b></div>
+      <div class="special-row special-inventory">
+          <span class="flex items-center gap-2 font-black text-[12px]"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Stockout Alerts</span>
+          <span class="font-black text-lg flex items-center gap-1">09 <span class="text-[10px] text-orange-500"><i data-lucide="arrow-up" class="inline w-3 h-3"></i> 1.1%</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPLIANCE -->
+<div class="tile flex flex-col">
+  <div class="h-1 w-full bg-[#f43f5e] mx-5 mt-0"></div>
+  <div class="p-5 pt-3">
+    <div class="section-header">
+      <span class="flex items-center gap-2"><i data-lucide="shield-check" class="w-5 h-5"></i> Compliance Risk</span>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-4">
+      <div class="text-4xl font-black text-slate-900 leading-none">71%</div>
+      <div class="flex flex-col">
+        <span class="status-badge-high">High Risk</span>
+        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-tighter mt-0.5">Stable</span>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="index-bar-bg">
+        <div class="h-full bg-red-500" style="width: 71%"></div>
+      </div>
+    </div>
+
+    <div class="space-y-0.5">
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Break Violations</span><b class="font-black text-slate-900">14</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Minor Violations</span><b class="font-black text-slate-900">5</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-yellow-500"></span>FWW Breaches</span><b class="font-black text-slate-900">3</b></div>
+      <div class="special-row special-compliance">
+          <span class="flex items-center gap-2 font-black text-[12px]"><i data-lucide="info" class="w-4 h-4"></i> Unapproved Shifts</span>
+          <span class="font-black text-lg flex items-center gap-1">11 <span class="text-[10px] text-slate-400"><i data-lucide="minus" class="inline w-3 h-3"></i> 0%</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE -->
+<div class="tile flex flex-col">
+  <div class="h-1 w-full bg-[#eab308] mx-5 mt-0"></div>
+  <div class="p-5 pt-3">
+    <div class="section-header">
+      <span class="flex items-center gap-2"><i data-lucide="calendar" class="w-5 h-5"></i> Schedule Risk</span>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-4">
+      <div class="text-4xl font-black text-slate-900 leading-none">66%</div>
+      <div class="flex flex-col">
+        <span class="px-2 py-0.5 border border-yellow-500 text-yellow-500 text-[10px] font-black rounded uppercase">Elevated</span>
+        <span class="text-[10px] font-extrabold text-green-600 uppercase tracking-tighter mt-0.5">-2.4% LW</span>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="index-bar-bg">
+        <div class="h-full bg-yellow-500" style="width: 66%"></div>
+      </div>
+    </div>
+
+    <div class="space-y-0.5">
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Understaffed</span><b class="font-black text-slate-900">21</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-yellow-500"></span>Overstaffed</span><b class="font-black text-slate-900">17</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-yellow-500"></span>Schedule Changes</span><b class="font-black text-slate-900">46</b></div>
+      <div class="special-row special-schedule">
+          <span class="flex items-center gap-2 font-black text-[12px]"><i data-lucide="clock" class="w-4 h-4"></i> Late Publishing</span>
+          <span class="font-black text-lg flex items-center gap-1">04 <span class="text-[10px] text-green-600"><i data-lucide="arrow-down" class="inline w-3 h-3"></i> 2.4%</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES -->
+<div class="tile flex flex-col">
+  <div class="h-1 w-full bg-[#3b82f6] mx-5 mt-0"></div>
+  <div class="p-5 pt-3">
+    <div class="section-header">
+      <span class="flex items-center gap-2"><i data-lucide="banknote" class="w-5 h-5"></i> Sales Risk</span>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-4">
+      <div class="text-4xl font-black text-slate-900 leading-none">61%</div>
+      <div class="flex flex-col">
+        <span class="px-2 py-0.5 border border-blue-500 text-blue-500 text-[10px] font-black rounded uppercase">Elevated</span>
+        <span class="text-[10px] font-extrabold text-green-600 uppercase tracking-tighter mt-0.5">-1.8% LW</span>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="index-bar-bg">
+        <div class="h-full bg-blue-500" style="width: 61%"></div>
+      </div>
+    </div>
+
+    <div class="space-y-0.5">
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-blue-500"></span>Sales Forecast</span><b class="font-black text-slate-900">-4.2%</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-red-500"></span>Transaction Drop</span><b class="font-black text-slate-900">-6.8%</b></div>
+      <div class="kpi-row"><span class="flex items-center gap-2 font-bold"><span class="dot bg-yellow-500"></span>Avg Ticket Var</span><b class="font-black text-slate-900">-2.1%</b></div>
+      <div class="special-row special-sales">
+          <span class="flex items-center gap-2 font-black text-[12px]"><i data-lucide="trending-down" class="w-4 h-4"></i> Promo Leakage</span>
+          <span class="font-black text-lg flex items-center gap-1">$3.4K <span class="text-[10px] text-green-600"><i data-lucide="arrow-down" class="inline w-3 h-3"></i> 1.8%</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</main>
+
+<script>
+lucide.createIcons();
+let isCollapsed = false;
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarTexts = document.querySelectorAll('.sidebar-text');
+    const icon = document.getElementById('collapse-icon');
+
+    if (!sidebar) return;
+
+    if (isCollapsed) {
+        sidebar.style.width = '16rem';
+        sidebarTexts.forEach(el => el.style.display = 'inline');
+        if(icon) icon.style.transform = 'rotate(0deg)';
+        isCollapsed = false;
+    } else {
+        sidebar.style.width = '80px';
+        sidebarTexts.forEach(el => el.style.display = 'none');
+        if(icon) icon.style.transform = 'rotate(180deg)';
+        isCollapsed = true;
+    }
+}
+
+function updateTime() {
+    const now = new Date();
+
+    const timeString = now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+
+    const fullStamp = `${now.toLocaleDateString()} ${timeString}`;
+
+    const ts = document.getElementById('timestamp');
+    const banner = document.getElementById('banner-timestamp');
+    const liveClock = document.getElementById('live-clock');
+
+    if (ts) ts.innerText = fullStamp;
+    if (banner) banner.innerText = timeString;
+    if (liveClock) liveClock.innerText = timeString;
+}
+
+setInterval(updateTime, 1000);
+updateTime();
+function handleRangeChange(val){
+    const el = document.getElementById('customRange');
+    if(!el) return;
+
+    if(val === 'custom'){
+        el.classList.add('show');
+    }else{
+        el.classList.remove('show');
+    }
+}
+</script>
+</div>
+</body>
+</html>

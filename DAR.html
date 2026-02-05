@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAR Dashboard | Restaurant Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .monospace { font-family: 'JetBrains Mono', monospace; }
+        
+        .sidebar { background-color: #0a0a0b; width: 64px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; }
+        .sidebar.expanded { width: 240px; }
+        
+        .nav-item-active {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .sidebar-label { opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+        .sidebar.expanded .sidebar-label { opacity: 1; }
+
+        .top-bar { background-color: #000000; height: 56px; }
+
+        .kpi-card {
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            cursor: grab;
+            border: 1px solid #edf2f7;
+            overflow: hidden;
+            position: relative;
+        }
+        .kpi-card:active { cursor: grabbing; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); }
+        
+        .tile-accent { height: 4px; width: 100%; position: absolute; top: 0; left: 0; }
+        .accent-blue { background: #3b82f6; }
+        .accent-green { background: #22c55e; }
+        .accent-red { background: #ef4444; }
+        .accent-orange { background: #f97316; }
+
+        .dot-today { width: 7px; height: 7px; background-color: #22c55e; border-radius: 50%; display: inline-block; }
+        .dot-wtd { width: 7px; height: 7px; background-color: #f97316; border-radius: 50%; display: inline-block; }
+
+        .text-tile-title { font-size: 13px; font-weight: 700; color: #475569; }
+        .text-tile-main { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -1px; line-height: 1; }
+        .text-tile-wtd { font-size: 11px; font-weight: 700; color: #2563eb; }
+        .text-tile-label { font-size: 11px; font-weight: 700; color: #1e293b; }
+
+        .split-footer {
+            background-color: #fdfdfd;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .text-tile-footer-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .text-tile-footer-val { font-size: 13px; font-weight: 800; color: #0f172a; }
+
+        .toggle-btn {
+            padding: 6px 14px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .toggle-btn.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .chart-stack-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #edf2f7;
+            padding: 24px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+
+        .modal-pill {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .modal-tab-btn {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .modal-tab-btn.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .date-range-trigger {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .date-range-trigger:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .flatpickr-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 10px;
+            font-weight: 900;
+            color: #1e293b;
+            text-transform: uppercase;
+            width: 180px;
+            cursor: pointer;
+            letter-spacing: 0.025em;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+.sidebar-active {
+    background-color: #2D3748;
+    border-left: 4px solid #4299E1;
+    color: white !important;
+}
+
+.range-animate{
+    max-width:0;
+    opacity:0;
+    overflow:hidden;
+    white-space:nowrap;
+    transition:max-width .28s ease, opacity .2s ease;
+}
+
+.range-animate.show{
+    max-width:220px;
+    opacity:1;
+}
+.sidebar-text{
+    transition: opacity .2s ease;
+}
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-[#0f1115] text-gray-400 w-64 flex-shrink-0 flex flex-col transition-all duration-300 z-50">
+        <div class="p-6 flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i data-lucide="cpu" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="text-white font-bold text-xl sidebar-text">AI Dashboard</span>
+        </div>
+
+        <nav class="flex-1 mt-4">
+            <div class="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sidebar-text">Analytics</div>
+            <a href="index.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-health">
+                <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Store Health</span>
+            </a>
+            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-compliance">
+                <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Compliance</span>
+            </a>
+            <a href="Risk.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-risk">
+                <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Risk Analysis</span>
+            </a>
+            <a href="Timeloss.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-loss">
+                <i data-lucide="clock-alert" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Time Loss</span>
+            </a>
+			<a href="DAR.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-dar">
+    <i data-lucide="clipboard-list" class="w-5 h-5 mr-3"></i>
+    <span class="sidebar-text">DAR Dashboard</span>
+</a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800">
+            <button onclick="toggleSidebar()" class="flex items-center gap-3 w-full p-2 hover:bg-gray-800 rounded transition-colors">
+                <i data-lucide="chevron-left" id="collapse-icon" class="w-5 h-5"></i>
+                <span class="sidebar-text">Collapse Menu</span>
+            </button>
+        </div>
+    </aside>
+    <main class="flex-1 flex flex-col overflow-hidden">
+ 
+        <header class="bg-[#0f1115] text-white h-16 flex items-center justify-between px-8 border-b border-gray-800 flex-shrink-0">
+            <div class="flex items-center gap-4">
+
+                <div class="flex items-center text-blue-400">
+                    <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold leading-tight tracking-tight uppercase">DAR Dashboard</h2>
+                    <p class="text-[9px] text-gray-400 uppercase font-bold tracking-[0.15em] opacity-80">WORKFORCE RISK & LABOR MANAGEMENT</p>
+                </div>
+								<div class="flex items-center gap-3 ml-6 transition-all duration-300 ease-out">
+
+
+    <!-- Store Dropdown -->
+    <select class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+        <option>Store 001</option>
+        <option>Store 045</option>
+        <option>Store 210</option>
+    </select>
+
+    <!-- Range Dropdown -->
+    <select id="rangeSelect"
+onchange="handleRangeChange(this.value)"
+class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+<option value="today">Today</option>
+<option value="weekly">Weekly</option>
+<option value="custom">Custom Range</option>
+    </select>
+
+    <!-- Hidden Date Range -->
+    <div id="customRange" class="range-animate flex items-center gap-2">
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+        <span class="text-gray-400 text-xs">to</span>
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+    </div>
+
+</div>
+            </div>
+			<!-- Store + Date Filters -->
+
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-2 text-sm text-gray-300 bg-gray-900 px-3 py-1.5 rounded-full">
+                    <i data-lucide="sun" class="w-4 h-4 text-yellow-500"></i>
+                    <span>72°F Sunny</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm font-mono tracking-tighter bg-gray-900 px-3 py-1.5 rounded-full min-w-[100px] justify-center">
+                    <i data-lucide="clock" class="w-4 h-4 text-blue-400"></i>
+                    <span id="live-clock">00:00:00</span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs">JD</div>
+            </div>
+        </header> 
+
+
+        <div class="flex-1 overflow-y-auto p-4 bg-gray-100">
+            <div id="main-grid-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3"></div>
+            <div id="main-chart-view" class="hidden flex flex-col gap-5"></div>
+        </div>
+
+        <footer class="bg-gray-800 text-gray-400 px-6 py-1.5 flex justify-end items-center text-[10px] font-medium">
+            <span>Last Polled At : 10-20-2024 07:43:12 EST</span>
+        </footer>
+    </main>
+
+    <!-- Graph Modal -->
+    <div id="graph-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
+        <div class="bg-white rounded-[24px] w-full max-w-[840px] h-[75vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                <div class="flex items-center gap-4">
+                    <div id="modal-header-icon" class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <i data-lucide="banknote" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h3 id="modal-title" class="text-xl font-extrabold text-slate-900 tracking-tight">Net Sales</h3>
+                            <span id="modal-val-pill" class="modal-pill !text-xs !py-0.5 !px-3">$14,285</span>
+                        </div>
+                        <div class="flex items-center mt-1.5">
+                            <div class="date-range-trigger" id="date-range-picker-container">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i>
+                                <input type="text" id="modal-date-picker" class="flatpickr-input" placeholder="SELECT DATE RANGE" readonly>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-300 ml-auto"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-300 hover:text-red-500 transition-colors p-2">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="px-6 py-2.5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+                <div id="modal-timeframe-tabs" class="flex bg-gray-200/50 p-0.5 rounded-lg border border-gray-200">
+                    <button class="modal-tab-btn active !px-4 !py-1.5 !text-[10px]" data-timeframe="daily">Daily</button>
+                    <button class="modal-tab-btn !px-4 !py-1.5 !text-[10px]" data-timeframe="weekly">Weekly</button>
+                </div>
+
+                <div class="flex bg-gray-200/50 p-0.5 rounded-lg border border-gray-200">
+                    <button id="btn-view-bar" class="toggle-btn active !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('bar')">Bar</button>
+                    <button id="btn-view-line" class="toggle-btn !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('line')">Line</button>
+                    <button id="btn-view-table" class="toggle-btn !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('table')">Table</button>
+                </div>
+            </div>
+
+            <div class="flex-1 p-5 flex flex-col relative overflow-hidden bg-white">
+                <div id="chart-container-div" class="flex-1 relative">
+                    <canvas id="modalTrendChart"></canvas>
+                </div>
+                <div id="table-container-div" class="hidden flex-1 overflow-auto bg-gray-50/30 rounded-xl border border-gray-100 p-3">
+                    <table class="w-full text-left">
+                        <thead class="bg-white text-gray-500 text-[9px] font-black uppercase tracking-widest border-b">
+                            <tr>
+                                <th class="px-4 py-3">Period</th>
+                                <th class="px-4 py-3 text-right">Actual</th>
+                                <th class="px-4 py-3 text-right">Last Week</th>
+                                <th class="px-4 py-3 text-right">Last Year</th>
+                                <th class="px-4 py-3 text-right">Variance (Act vs LW)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-table-body" class="divide-y divide-gray-100 text-[10px]"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const KPI_CONFIGS = [
+            { id: 'net-sales', title: 'Net Sales', value: '$14,285', wtd: '$92,440', color: 'accent-blue', icon: 'banknote', type: 'simple', lw: '+6.2%', ly: '+12.4%', wtdLw: '+4.8%', wtdLy: '+9.2%' },
+            { id: 'labor-pct', title: 'Labor%', value: '18.2%', wtd: '17.8%', color: 'accent-green', icon: 'users', type: 'split', midLeft: 'Labor $', midLeftVal: '$2.6k', midRight: 'Sales', midRightVal: '$14k', lw: '-1.4%', ly: '-2.2%', wtdLw: '-0.8%', wtdLy: '-1.5%' },
+            { id: 'food-pct', title: 'Food Cost%', value: '31.4%', wtd: '30.8%', color: 'accent-red', icon: 'utensils', type: 'split', midLeft: 'Cost $', midLeftVal: '$4.4k', midRight: 'Sales', midRightVal: '$14k', lw: '+2.1%', ly: '+3.5%', wtdLw: '+1.2%', wtdLy: '+2.8%' },
+            { id: 'splh', title: 'SPLH', value: '$118.40', wtd: '$122.10', color: 'accent-blue', icon: 'dollar-sign', type: 'split', midLeft: 'Sales', midLeftVal: '$14k', midRight: 'Hours', midRightVal: '120.6', lw: '+3.4%', ly: '+8.1%', wtdLw: '+5.2%', wtdLy: '+7.4%' },
+            { id: 'trans', title: 'Transactions', value: '1,042', wtd: '6,840', color: 'accent-orange', icon: 'shopping-cart', type: 'simple', lw: '+4.2%', ly: '+5.8%', wtdLw: '+3.1%', wtdLy: '+6.2%' },
+            { id: 'hours', title: 'Labor Hours', value: '120.6', wtd: '792.4', color: 'accent-blue', icon: 'clock', type: 'simple', lw: '-0.5%', ly: '+1.2%', wtdLw: '-1.1%', wtdLy: '+0.8%' },
+            { id: 'act-ideal', title: 'Act vs Ideal', value: '+5.2', wtd: '+28.4', color: 'accent-red', icon: 'sigma', type: 'split', midLeft: 'Actual', midLeftVal: '120.6', midRight: 'Ideal', midRightVal: '115.4', lw: '+1.2%', ly: '+2.4%', wtdLw: '+0.8%', wtdLy: '+1.4%' },
+            { id: 'act-sched', title: 'Act vs Sched', value: '-1.4', wtd: '+12.6', color: 'accent-green', icon: 'calendar-check', type: 'split', midLeft: 'Actual', midLeftVal: '120.6', midRight: 'Sched', midRightVal: '122.0', lw: '-0.4%', ly: '-0.8%', wtdLw: '-0.2%', wtdLy: '-0.6%' },
+            { id: 'loss-doll', title: 'Financial Loss $', value: '$186.40', wtd: '$1,242', color: 'accent-red', icon: 'trending-down', type: 'quad', q1: 'Early', q1v: '$42', q2: 'Late', q2v: '$68', q3: 'OT', q3v: '$54', q4: 'Break', q4v: '$22', lw: '+12%', ly: '+18%', wtdLw: '+8%', wtdLy: '+14%' },
+            { id: 'loss-time', title: 'Time Loss', value: '6.4h', wtd: '42.8h', color: 'accent-red', icon: 'hourglass', type: 'quad', q1: 'Early', q1v: '1.4h', q2: 'Late', q2v: '2.2h', q3: 'OT', q3v: '1.8h', q4: 'Break', q4v: '1.0h', lw: '+5%', ly: '+12%', wtdLw: '+4%', wtdLy: '+9%' },
+            { id: 'act-proj-sales', title: 'Act/Proj Sales', value: '-$315', wtd: '+$2,480', color: 'accent-red', icon: 'target', type: 'split', midLeft: 'Actual', midLeftVal: '$14k', midRight: 'Proj', midRightVal: '$14.6k', lw: '-2%', ly: '-4%', wtdLw: '+1.5%', wtdLy: '+3%' },
+            { id: 'act-proj-trans', title: 'Act/Proj Trans', value: '+18', wtd: '+114', color: 'accent-green', icon: 'activity', type: 'split', midLeft: 'Actual', midLeftVal: '1,042', midRight: 'Proj', midRightVal: '1,024', lw: '+1.8%', ly: '+2.4%', wtdLw: '+1.2%', wtdLy: '+2.1%' }
+        ];
+
+        let modalChart = null;
+        let stackCharts = {};
+        let currentTimeframe = 'daily';
+        let currentView = 'bar'; 
+        let currentRange = [new Date("2024-10-14"), new Date("2024-10-20")];
+
+        function init() {
+            lucide.createIcons();
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderKPIs();
+            renderChartStack();
+            bindModalEvents();
+            initModalDatePicker();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function initModalDatePicker() {
+            flatpickr("#modal-date-picker", {
+                mode: "range",
+                dateFormat: "M d, Y",
+                defaultDate: currentRange,
+                onClose: function(selectedDates) {
+                    if (selectedDates.length === 2) {
+                        currentRange = selectedDates;
+                        renderActiveModalView();
+                    }
+                }
+            });
+        }
+
+        function switchMainView(view) {
+            const gridView = document.getElementById('main-grid-view');
+            const chartView = document.getElementById('main-chart-view');
+            const btnGrid = document.getElementById('btn-grid-view');
+            const btnChart = document.getElementById('btn-chart-view');
+
+            if (view === 'grid') {
+                gridView.classList.remove('hidden');
+                chartView.classList.add('hidden');
+                btnGrid.classList.add('active');
+                btnChart.classList.remove('active');
+            } else {
+                gridView.classList.add('hidden');
+                chartView.classList.remove('hidden');
+                btnGrid.classList.remove('active');
+                btnChart.classList.add('active');
+                initStackCharts();
+            }
+        }
+
+        function switchTrendView(view) {
+            currentView = view;
+            const views = ['bar', 'line', 'table'];
+            views.forEach(v => {
+                const btn = document.getElementById(`btn-view-${v}`);
+                if (!btn) return;
+                if (v === view) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            
+            if (!document.getElementById('graph-modal').classList.contains('hidden')) {
+                renderActiveModalView();
+            }
+            if (!document.getElementById('main-chart-view').classList.contains('hidden')) {
+                initStackCharts();
+            }
+        }
+
+        function renderKPIs() {
+            const grid = document.getElementById('main-grid-view');
+            const getColorClass = (val) => val.includes('+') ? 'text-emerald-500' : 'text-red-500';
+
+            grid.innerHTML = KPI_CONFIGS.map(config => `
+                <div class="kpi-card p-3 flex flex-col group relative">
+                    <div class="tile-accent ${config.color}"></div>
+                    <div class="flex justify-between items-center mb-1 mt-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="p-1 rounded-lg bg-gray-50 text-gray-400">
+                                <i data-lucide="${config.icon}" class="w-3.5 h-3.5"></i>
+                            </div>
+                            <span class="text-tile-title truncate max-w-[100px]">${config.title}</span>
+                        </div>
+                        <button onclick="openTrendModal('${config.id}')" class="text-white bg-blue-600 hover:bg-blue-700 transition p-1 rounded-lg shadow-sm z-10">
+                            <i data-lucide="line-chart" class="w-2.5 h-2.5"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-baseline gap-1.5 mb-1.5">
+                        <span class="text-tile-main">${config.value}</span>
+                        <span class="text-tile-wtd whitespace-nowrap">WTD (${config.wtd})</span>
+                    </div>
+
+                    <div class="flex-1">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-gray-400 text-[9px] font-bold uppercase tracking-wider">
+                                    <th></th><th></th>
+                                    <th class="text-right pb-0.5 pr-2">LW</th>
+                                    <th class="text-right pb-0.5">LY</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-tile-label">
+                                <tr class="border-b border-gray-50">
+                                    <td class="w-2.5 py-0.5"><span class="dot-today"></span></td>
+                                    <td class="py-0.5 text-[10px]">Today</td>
+                                    <td class="text-right py-1 pr-2 ${getColorClass(config.lw)}">${config.lw}</td>
+                                    <td class="text-right py-1 ${getColorClass(config.ly)}">${config.ly}</td>
+                                </tr>
+                                <tr>
+                                    <td class="w-2.5 py-0.5"><span class="dot-wtd"></span></td>
+                                    <td class="py-0.5 text-[10px]">WTD</td>
+                                    <td class="text-right py-1 pr-2 ${getColorClass(config.wtdLw)}">${config.wtdLw}</td>
+                                    <td class="text-right py-1 ${getColorClass(config.wtdLy)}">${config.wtdLy}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-1.5 pt-1.5 split-footer -mx-3 -mb-3 px-3 pb-3">
+                        ${config.type === 'split' ? `
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <p class="text-tile-footer-label">${config.midLeft}</p>
+                                    <p class="text-tile-footer-val">${config.midLeftVal}</p>
+                                </div>
+                                <div class="w-px h-4 bg-gray-200 mx-1.5"></div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-tile-footer-label">${config.midRight}</p>
+                                    <p class="text-tile-footer-val">${config.midRightVal}</p>
+                                </div>
+                            </div>
+                        ` : config.type === 'quad' ? `
+                             <div class="grid grid-cols-2 gap-1">
+                                <div><p class="text-tile-footer-label">${config.q1}</p><p class="text-tile-footer-val">${config.q1v}</p></div>
+                                <div class="text-right"><p class="text-tile-footer-label">${config.q2}</p><p class="text-tile-footer-val">${config.q2v}</p></div>
+                            </div>
+                        ` : `<div class="h-1.5"></div>`}
+                    </div>
+                </div>`).join('');
+            lucide.createIcons();
+        }
+
+        function renderChartStack() {
+            const stack = document.getElementById('main-chart-view');
+            stack.innerHTML = KPI_CONFIGS.map(config => `
+                <div class="chart-stack-card">
+                    <div class="tile-accent ${config.color}"></div>
+                    <div class="flex items-center justify-between mb-4 mt-2">
+                        <div class="flex flex-col">
+                            <h3 class="text-lg font-bold text-slate-800">${config.title} Trend</h3>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Reporting Period: Oct 20, 2024</p>
+                        </div>
+                        <div class="flex items-center gap-6">
+                             <div class="text-right">
+                                <p class="text-2xl font-black text-blue-600 tracking-tighter">${config.value}</p>
+                             </div>
+                             <button onclick="openTrendModal('${config.id}')" class="p-2 hover:bg-gray-100 rounded-lg transition text-slate-300 hover:text-blue-600">
+                                <i data-lucide="maximize-2" class="w-5 h-5"></i>
+                             </button>
+                        </div>
+                    </div>
+                    <div class="h-[300px] w-full">
+                        <canvas id="stack-chart-${config.id}"></canvas>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function initStackCharts() {
+            KPI_CONFIGS.forEach(config => {
+                const canvas = document.getElementById(`stack-chart-${config.id}`);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (stackCharts[config.id]) stackCharts[config.id].destroy();
+                
+                const data = getModalData(currentTimeframe);
+                
+                stackCharts[config.id] = new Chart(ctx, {
+                    type: currentView === 'line' ? 'line' : 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            { label: 'Actual', data: data.actual, backgroundColor: '#3b82f6', borderColor: '#3b82f6', borderRadius: 4, tension: 0.4 },
+                            { label: 'Last Week', data: data.lw, backgroundColor: '#94a3b8', borderColor: '#94a3b8', borderRadius: 4, tension: 0.4 },
+                            { label: 'Last Year', data: data.ly, backgroundColor: '#e2e8f0', borderColor: '#e2e8f0', borderRadius: 4, tension: 0.4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10, weight: '700' } } } },
+                        scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 9 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '700' } } } }
+                    }
+                });
+            });
+        }
+
+        function openTrendModal(id) {
+            const config = KPI_CONFIGS.find(k => k.id === id);
+            document.getElementById('modal-title').textContent = config.title;
+            document.getElementById('modal-val-pill').textContent = config.value;
+            const iconContainer = document.getElementById('modal-header-icon');
+            iconContainer.innerHTML = `<i data-lucide="${config.icon}" class="w-6 h-6"></i>`;
+            lucide.createIcons();
+            document.getElementById('graph-modal').classList.remove('hidden');
+            renderActiveModalView();
+        }
+
+        function bindModalEvents() {
+            const timeframeBtns = document.querySelectorAll('#modal-timeframe-tabs button');
+            timeframeBtns.forEach(btn => {
+                btn.onclick = () => {
+                    timeframeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTimeframe = btn.dataset.timeframe;
+                    renderActiveModalView();
+                };
+            });
+        }
+
+        function renderActiveModalView() {
+            const chartDiv = document.getElementById('chart-container-div');
+            const tableDiv = document.getElementById('table-container-div');
+            if (currentView === 'table') {
+                chartDiv.classList.add('hidden');
+                tableDiv.classList.remove('hidden');
+                renderModalTable();
+            } else {
+                chartDiv.classList.remove('hidden');
+                tableDiv.classList.add('hidden');
+                renderModalChart();
+            }
+        }
+
+        function getModalData(timeframe) {
+            let labels = [];
+            const start = new Date(currentRange[0]);
+            const end = new Date(currentRange[1]);
+            
+            if (timeframe === 'daily') {
+                let current = new Date(start);
+                while (current <= end) {
+                    labels.push(`${(current.getMonth()+1).toString().padStart(2, '0')}/${current.getDate().toString().padStart(2, '0')}`);
+                    current.setDate(current.getDate() + 1);
+                }
+            } else {
+                let current = new Date(start);
+                while (current <= end) {
+                    labels.push(`${(current.getMonth()+1).toString().padStart(2, '0')}/${current.getDate().toString().padStart(2, '0')}`);
+                    current.setDate(current.getDate() + 7);
+                }
+            }
+
+            if (labels.length === 0) labels = ["N/A"];
+            
+            const count = labels.length;
+            return {
+                labels,
+                actual: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1200),
+                lw: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1100),
+                ly: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1000)
+            };
+        }
+
+        function renderModalChart() {
+            const data = getModalData(currentTimeframe);
+            const ctx = document.getElementById('modalTrendChart').getContext('2d');
+            if (modalChart) modalChart.destroy();
+            modalChart = new Chart(ctx, {
+                type: currentView === 'line' ? 'line' : 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        { label: 'Actual', data: data.actual, backgroundColor: '#3b82f6', borderColor: '#3b82f6', borderRadius: 4, tension: 0.4 },
+                        { label: 'Last Week', data: data.lw, backgroundColor: '#94a3b8', borderColor: '#94a3b8', borderRadius: 4, tension: 0.4 },
+                        { label: 'Last Year', data: data.ly, backgroundColor: '#e2e8f0', borderColor: '#e2e8f0', borderRadius: 4, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { weight: 'bold', size: 9 } } } },
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 8 } } }, 
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: '700' } } } 
+                    }
+                }
+            });
+        }
+
+        function renderModalTable() {
+            const data = getModalData(currentTimeframe);
+            const tbody = document.getElementById('modal-table-body');
+            tbody.innerHTML = data.labels.map((label, i) => {
+                const diff = data.actual[i] - data.lw[i];
+                const variance = ((diff / data.lw[i]) * 100).toFixed(1);
+                const colorClass = diff >= 0 ? 'text-emerald-600' : 'text-red-500';
+                const prefix = diff >= 0 ? '+' : '';
+                
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-bold text-slate-800">${label}</td>
+                        <td class="px-4 py-3 text-right font-bold">$${data.actual[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right text-slate-500">$${data.lw[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right text-slate-500">$${data.ly[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right font-black ${colorClass}">${prefix}${variance}%</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function closeModal() {
+            document.getElementById('graph-modal').classList.add('hidden');
+        }
+		let isCollapsed = false;
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarTexts = document.querySelectorAll('.sidebar-text');
+    const icon = document.getElementById('collapse-icon');
+
+    if (!sidebar) return;
+
+    if (isCollapsed) {
+        sidebar.style.width = '16rem';
+        sidebarTexts.forEach(el => el.style.display = 'inline');
+        if(icon) icon.style.transform = 'rotate(0deg)';
+        isCollapsed = false;
+    } else {
+        sidebar.style.width = '80px';
+        sidebarTexts.forEach(el => el.style.display = 'none');
+        if(icon) icon.style.transform = 'rotate(180deg)';
+        isCollapsed = true;
+    }
+}
+
+function handleRangeChange(val){
+    const el = document.getElementById('customRange');
+    if(!el) return;
+
+    if(val === 'custom'){
+        el.classList.add('show');
+    }else{
+        el.classList.remove('show');
+    }
+}
+        window.onload = init;
+    </script>
+</body>
+</html>

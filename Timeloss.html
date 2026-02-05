@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Time Loss Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F4F7FB; color: #1e293b; overflow: hidden; }
+        .sidebar { background-color: #0a0a0b; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .main-canvas { background-color: #FFFFFF; border-top-left-radius: 1.5rem; }
+        .monospace { font-family: 'JetBrains Mono', monospace; }
+        
+        .blue-active { background: linear-gradient(90deg, #1e40af 0%, rgba(30, 64, 175, 0) 100%); border-left: 4px solid #3b82f6; }
+        
+        /* Hero Banner Styles */
+        .hero-banner {
+    background-color:#13161d;
+    border-radius:12px;
+    color:white;
+    display:flex;
+    align-items:center;
+    padding:0 2rem;
+    height:100px;
+    box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);
+}
+        .pulse-line {
+    width:80px;
+    height:40px;
+    stroke:#ef4444;
+    stroke-width:2;
+    fill:none;
+}
+		.progress-bar-gradient {
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+    height: 6px;
+    border-radius: 3px;
+    width: 140px;
+    position: relative;
+}
+
+.progress-pointer {
+    position: absolute;
+    right: 14%;
+    top: -2px;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+        
+        .progress-bar-container { background: #1f2937; height: 6px; border-radius: 3px; width: 140px; position: relative; overflow: hidden; }
+        .progress-bar-fill { background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%); height: 100%; width: 86%; border-radius: 3px; }
+
+        .bouncy-hover:hover { transform: scale(1.1); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .modal-bg { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .toggle-active-dark { background-color: #3b82f6 !important; color: white !important; }
+
+        /* Table Specific Styles */
+        .sticky-col-1 { position: sticky; left: 0; background-color: inherit; z-index: 10; }
+        .sticky-col-2 { position: sticky; left: 80px; background-color: inherit; z-index: 10; }
+        .sticky-header-top { position: sticky; top: 0; z-index: 30; }
+        
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tr:hover { background-color: #f1f5f9 !important; }
+        
+        .table-container { max-height: 400px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.75rem; }
+
+        .toolbar-icon { padding: 0.5rem; border-radius: 0.5rem; color: #64748b; transition: all 0.2s; cursor: pointer; position: relative; }
+        .toolbar-icon:hover { background-color: #f1f5f9; color: #1e293b; }
+
+        /* Metric Tile Formatting */
+        .metric-tile { 
+            background-color: #FFFFFF; 
+            border-radius: 1.25rem; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05), inset 0 -4px 0 rgba(0,0,0,0.02); 
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            overflow: hidden; 
+        }
+        .metric-tile:hover {
+            transform: translateY(-10px) rotateX(1deg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .metric-top-bar {
+            height: 6px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Modal Toggle UI */
+        .pill-toggle-btn {
+            padding: 0.5rem 1.5rem;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .pill-toggle-btn.active {
+            background: white;
+            color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .calendar-dropdown {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        /* Range Calendar Specific Styles */
+        .cal-day { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: 700; transition: all 0.1s; border-radius: 0.5rem; color: #64748b; }
+        .cal-day:hover { background: #f1f5f9; color: #1e293b; }
+        .cal-day.in-range { background: #eff6ff; color: #3b82f6; border-radius: 0; }
+        .cal-day.range-start { background: #3b82f6 !important; color: white !important; border-top-right-radius: 0; border-bottom-right-radius: 0; border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem; }
+        .cal-day.range-end { background: #3b82f6 !important; color: white !important; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
+        .cal-day.range-start.range-end { border-radius: 0.5rem !important; }
+        .cal-day.outside { opacity: 0.2; pointer-events: none; }
+
+        /* Sidebar State */
+        .sidebar-collapsed { width: 80px; }
+        .sidebar-expanded { width: 224px; }
+        .sidebar-text { transition: opacity 0.2s; }
+        .sidebar-collapsed .sidebar-text { opacity: 0; pointer-events: none; width: 0; display: none; }
+		.date-range-trigger {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 4px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.date-range-trigger:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.flatpickr-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 10px;       /* ← THIS fixes big font */
+    font-weight: 900;
+    color: #1e293b;
+    text-transform: uppercase;
+    width: 180px;          /* ← THIS fixes truncation */
+    cursor: pointer;
+    letter-spacing: 0.025em;
+}
+.range-animate{
+    max-width:0;
+    opacity:0;
+    overflow:hidden;
+    white-space:nowrap;
+    transition:max-width .28s ease, opacity .2s ease;
+}
+.range-animate.show{
+    max-width:220px;
+    opacity:1;
+}
+.sidebar-active {
+    background-color: #2D3748;
+    border-left: 4px solid #4299E1;
+    color: white !important;
+}
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+
+    <!-- Sidebar -->
+ <aside id="sidebar" class="bg-[#0f1115] text-gray-400 w-64 flex-shrink-0 flex flex-col transition-all duration-300 z-50">
+        <div class="p-6 flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i data-lucide="cpu" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="text-white font-bold text-xl sidebar-text">AI Dashboard</span>
+        </div>
+
+        <nav class="flex-1 mt-4">
+            <div class="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sidebar-text">Analytics</div>
+            <a href="index.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-health">
+                <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Store Health</span>
+            </a>
+            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-compliance">
+                <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Compliance</span>
+            </a>
+            <a href="Risk.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-risk">
+                <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Risk Analysis</span>
+            </a>
+            <a href="Timeloss.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-loss">
+                <i data-lucide="clock-alert" class="w-5 h-5 mr-3"></i>
+                <span class="sidebar-text">Time Loss</span>
+            </a>
+			<a href="DAR.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-dar">
+    <i data-lucide="clipboard-list" class="w-5 h-5 mr-3"></i>
+    <span class="sidebar-text">DAR Dashboard</span>
+</a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800">
+            <button onclick="toggleSidebar()" class="flex items-center gap-3 w-full p-2 hover:bg-gray-800 rounded transition-colors">
+                <i data-lucide="chevron-left" id="collapse-icon" class="w-5 h-5"></i>
+                <span class="sidebar-text">Collapse Menu</span>
+            </button>
+        </div>
+    </aside>
+    <div class="flex-1 flex flex-col min-w-0 relative z-10">
+
+        <!-- Top Bar -->
+        <header class="bg-[#0f1115] text-white h-16 flex items-center justify-between px-8 border-b border-gray-800 flex-shrink-0">
+            <div class="flex items-center gap-4">
+
+                <div class="flex items-center text-blue-400">
+                    <i data-lucide="clock-alert" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold leading-tight tracking-tight uppercase">Time Loss Dashboard</h2>
+                    <p class="text-[9px] text-gray-400 uppercase font-bold tracking-[0.15em] opacity-80">WORKFORCE TIME LOSS ANALYTICS</p>
+                </div>
+								<div class="flex items-center gap-3 ml-6 transition-all duration-300 ease-out">
+
+
+    <!-- Store Dropdown -->
+    <select class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+        <option>Store 001</option>
+        <option>Store 045</option>
+        <option>Store 210</option>
+    </select>
+
+    <!-- Range Dropdown -->
+    <select id="rangeSelect"
+onchange="handleRangeChange(this.value)"
+class="bg-gray-900 text-gray-300 text-[11px] font-bold px-3 py-1.5 rounded-full outline-none">
+<option value="today">Today</option>
+<option value="weekly">Weekly</option>
+<option value="custom">Custom Range</option>
+    </select>
+
+    <!-- Hidden Date Range -->
+    <div id="customRange" class="range-animate flex items-center gap-2">
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+        <span class="text-gray-400 text-xs">to</span>
+        <input type="date" class="bg-gray-900 text-gray-300 text-[11px] font-bold px-2 py-1.5 rounded-full outline-none"/>
+    </div>
+
+</div>
+            </div>
+			<!-- Store + Date Filters -->
+
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-2 text-sm text-gray-300 bg-gray-900 px-3 py-1.5 rounded-full">
+                    <i data-lucide="sun" class="w-4 h-4 text-yellow-500"></i>
+                    <span>72°F Sunny</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm font-mono tracking-tighter bg-gray-900 px-3 py-1.5 rounded-full min-w-[100px] justify-center">
+                    <i data-lucide="clock" class="w-4 h-4 text-blue-400"></i>
+                    <span id="live-clock">00:00:00</span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs">JD</div>
+            </div>
+        </header>
+        <div class="flex-1 main-canvas overflow-hidden flex flex-col">
+            <!-- Control Header -->
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                
+                <!-- SECTION: HERO BANNER -->
+                <section class="hero-banner mb-6">
+                    
+                        <div class="border-r border-gray-700 pr-10">
+
+                            <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Operational Summary</span>
+                            <h3 class="text-2xl font-black uppercase tracking-tight">Time Loss Summary</h3>
+                        </div>
+
+                        <div class="px-8 flex items-center">
+                                <svg class="pulse-line" viewBox="0 0 80 40">
+                                    <path d="M0,15 L10,15 L12,5 L16,20 L18,15 L45,15" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col items-start pr-12">
+
+                                <div class="flex items-center gap-4">
+                                    <span id="banner-val" class="text-5xl font-black leading-none tracking-tighter">86%</span>
+                                    <span class="bg-emerald-900/40 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded text-[10px] font-black uppercase">Excellent</span>
+                                </div>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <div class="progress-bar-gradient">
+   <div class="progress-pointer"></div>
+</div>
+                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest">AI Verified Index</span>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-10 items-center border-l border-gray-700 pl-10">
+
+                                <div>
+                                    <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Last Week</p>
+                                    <span class="text-xl font-black text-emerald-400 tracking-tighter">+3.2 pts <i data-lucide="trending-up" class="inline w-3 h-3"></i></span>
+                                </div>
+                                <div>
+                                    <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Last Year</p>
+                                    <span class="text-xl font-black text-emerald-400 tracking-tighter">+7.8 pts <i data-lucide="trending-up" class="inline w-3 h-3"></i></span>
+                                </div>
+                            </div>
+                        
+
+                        <div class="ml-auto flex items-center gap-6">
+    <div class="flex items-center gap-3 border-l border-gray-700 pl-6">
+                            <div class="text-right">
+                                <p class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Live Operational Sync</p>
+                                <p id="banner-clock" class="text-[11px] font-bold text-gray-400">6:39:21 PM</p>
+                            </div>
+                            <div class="bg-gray-800 p-2 rounded cursor-pointer hover:bg-gray-700">
+
+                                <i data-lucide="rotate-cw" class="w-4 h-4 text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5 KEY METRIC TILES -->
+                <section class="grid grid-cols-5 gap-4 py-2">
+                    <div id="hero-tiles-container" class="contents"></div>
+                </section>
+
+                <!-- CHARTS SECTION -->
+                <section class="grid grid-cols-2 gap-4 h-[410px]">
+                    <div class="bg-white rounded-[1.5rem] p-5 border border-slate-100 shadow-sm flex flex-col overflow-hidden relative">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="bar-chart-2" class="w-4 h-4 text-slate-900"></i>
+                                <h3 class="text-[14px] font-black uppercase text-slate-900 tracking-widest italic">Weekly Time Loss Analysis</h3>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                    <button class="p-1 px-2 rounded text-[10px] font-black transition-all bg-white shadow-sm text-blue-600"><i data-lucide="clock" class="w-4 h-4"></i></button>
+                                    <button class="p-1 px-2 rounded text-[10px] font-black transition-all text-slate-400"><i data-lucide="dollar-sign" class="w-4 h-4"></i></button>
+                                </div>
+                                <button class="p-1.5 bg-slate-900 text-white rounded-lg" onclick="toggleView('weekly-chart-cont', 'weekly-table-cont', this)"><i id="toggle-icon-weekly" data-lucide="layout-grid" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-h-0 relative">
+                            <div id="weekly-chart-cont" class="w-full h-full"><canvas id="weeklyLossChart"></canvas></div>
+                            <div id="weekly-table-cont" class="hidden absolute inset-0 bg-white overflow-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead class="bg-slate-50 sticky top-0 uppercase text-[9px] font-black">
+                                        <tr><th class="p-3 border-b">Day</th><th class="p-3 border-b text-right">Early</th><th class="p-3 border-b text-right">Late</th><th class="p-3 border-b text-right">OT</th><th class="p-3 border-b text-right">Break</th><th class="p-3 border-b text-right">Total</th></tr>
+                                    </thead>
+                                    <tbody id="weekly-table-body" class="divide-y font-bold"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-100 flex flex-col overflow-hidden relative">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="trending-up" class="w-4 h-4 text-slate-900"></i>
+                                <h3 class="text-[14px] font-black uppercase tracking-widest text-slate-900 italic">Time Loss Trend vs Sales</h3>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                    <button id="range-7d" class="range-btn px-2 py-1 text-[9px] font-black rounded toggle-active-dark" onclick="updateTrendRange(7, this)">7D</button>
+                                    <button id="range-14d" class="range-btn px-2 py-1 text-[9px] font-black text-slate-400 rounded" onclick="updateTrendRange(14, this)">14D</button>
+                                    <button id="range-30d" class="range-btn px-2 py-1 text-[9px] font-black text-slate-400 rounded" onclick="updateTrendRange(30, this)">1M</button>
+                                </div>
+                                <button class="p-1.5 bg-slate-900 text-white rounded-lg" onclick="toggleView('trend-chart-cont', 'trend-table-cont', this)"><i data-lucide="layout-grid" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-h-0 relative">
+                            <div id="trend-chart-cont" class="w-full h-full"><canvas id="trendAnalysisChart"></canvas></div>
+                            <div id="trend-table-cont" class="hidden absolute inset-0 bg-white overflow-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead class="bg-slate-50 sticky top-0 uppercase text-[9px] font-black">
+                                        <tr><th class="p-3 border-b">Date</th><th class="p-3 border-b text-right">Sales ($)</th><th class="p-3 border-b text-right">Labor %</th><th class="p-3 border-b text-right">Loss %</th></tr>
+                                    </thead>
+                                    <tbody id="trend-table-body" class="divide-y font-bold"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HISTORICAL LOG -->
+                <section id="historicalLogSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 flex flex-col">
+                    <div class="p-4 bg-white border-b flex justify-between items-center text-slate-800 font-black uppercase text-[15px] italic tracking-widest">
+                        <div class="flex items-center space-x-2"><i data-lucide="scroll-text" class="w-5 h-5"></i><span>Historical Data Log</span></div>
+                        <div class="flex items-center space-x-1">
+                            <button class="toolbar-icon" title="Search"><i data-lucide="search" class="w-5 h-5"></i></button>
+                            <button class="toolbar-icon" title="Filter"><i data-lucide="filter" class="w-5 h-5"></i></button>
+                            <button class="toolbar-icon" title="Download"><i data-lucide="download" class="w-5 h-5"></i></button>
+                            <button class="toolbar-icon" title="Maximize"><i data-lucide="maximize" class="w-5 h-5"></i></button>
+                            <button class="toolbar-icon" title="Settings"><i data-lucide="settings" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-container no-scrollbar">
+                        <table class="w-full text-[11px] border-collapse min-w-[1200px]" id="historyTable">
+                            <thead><tr class="bg-slate-50 text-slate-500 font-black uppercase tracking-tighter"><th class="p-3 text-left sticky-col-1 border-b">Date</th><th class="p-3 text-left sticky-col-2 border-b">Store #</th><th class="p-3 text-right border-b">Actual Sales ($)</th><th class="p-3 text-right border-b">Labor %</th><th class="p-3 text-right border-b text-rose-600">Loss %</th><th class="p-3 text-right border-b">Total Loss</th><th class="p-3 text-right border-b">Early In</th><th class="p-3 text-right border-b">Late Out</th><th class="p-3 text-right border-b">OT Loss</th><th class="p-3 text-right border-b">Break Loss</th></tr></thead>
+                            <tbody id="historyBody" class="font-bold text-slate-700 divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graph Modal -->
+    <div id="graph-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
+        <div class="bg-white rounded-[24px] w-full max-w-[840px] h-[75vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                <div class="flex items-center gap-4">
+                    <div id="modal-header-icon" class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <i data-lucide="banknote" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h3 id="modal-title" class="text-xl font-extrabold text-slate-900 tracking-tight">Net Sales</h3>
+                            <span id="modal-val-pill" class="modal-pill !text-xs !py-0.5 !px-3">$14,285</span>
+                        </div>
+                        <div class="flex items-center mt-1.5">
+                            <div class="date-range-trigger" id="date-range-picker-container">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i>
+                                <input type="text" id="modal-date-picker" class="flatpickr-input" placeholder="SELECT DATE RANGE" readonly>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-300 ml-auto"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-300 hover:text-red-500 transition-colors p-2">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="px-6 py-2.5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+                <div id="modal-timeframe-tabs" class="flex bg-gray-200/50 p-0.5 rounded-lg border border-gray-200">
+                    <button class="modal-tab-btn active !px-4 !py-1.5 !text-[10px]" data-timeframe="daily">Daily</button>
+                    <button class="modal-tab-btn !px-4 !py-1.5 !text-[10px]" data-timeframe="weekly">Weekly</button>
+                </div>
+
+                <div class="flex bg-gray-200/50 p-0.5 rounded-lg border border-gray-200">
+                    <button id="btn-view-bar" class="toggle-btn active !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('bar')">Bar</button>
+                    <button id="btn-view-line" class="toggle-btn !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('line')">Line</button>
+                    <button id="btn-view-table" class="toggle-btn !px-3 !py-1.5 !text-[9px]" onclick="switchTrendView('table')">Table</button>
+                </div>
+            </div>
+
+            <div class="flex-1 p-5 flex flex-col relative overflow-hidden bg-white">
+                <div id="chart-container-div" class="flex-1 relative">
+                    <canvas id="modalTrendChart"></canvas>
+                </div>
+                <div id="table-container-div" class="hidden flex-1 overflow-auto bg-gray-50/30 rounded-xl border border-gray-100 p-3">
+                    <table class="w-full text-left">
+                        <thead class="bg-white text-gray-500 text-[9px] font-black uppercase tracking-widest border-b">
+                            <tr>
+                                <th class="px-4 py-3">Period</th>
+                                <th class="px-4 py-3 text-right">Actual</th>
+                                <th class="px-4 py-3 text-right">Last Week</th>
+                                <th class="px-4 py-3 text-right">Last Year</th>
+                                <th class="px-4 py-3 text-right">Variance (Act vs LW)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-table-body" class="divide-y divide-gray-100 text-[10px]"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const kpiData = {
+            dollars: [
+                { id: 1, val: '86%' },
+                { id: 2, title: 'Actual Sales', val: '$32,862.63', wtd_badge: '-2.1%', t_lw: '-0.8%', t_ly: '+1.1%', w_lw: '-0.5%', w_ly: '+3.2%', icon: 'dollar-sign', footer1: 'SALES', footer2: 'LY SALES', fval1: '$32k', fval2: '$28k' },
+                { id: 3, title: 'Labor %', val: '18.2%', wtd_badge: '17.8%', t_lw: '-1.4%', t_ly: '-2.2%', w_lw: '-0.8%', w_ly: '-1.5%', icon: 'users', footer1: 'LABOR $', footer2: 'SALES', fval1: '$2.6k', fval2: '$14k' },
+                { id: 4, title: 'Early Clock In', val: '$36.61', wtd_badge: '+1.2%', t_lw: '+2.0%', t_ly: '+5.0%', w_lw: '+1.5%', w_ly: '+4.2%', icon: 'clock-arrow-up', footer1: 'COUNT', footer2: 'LY COUNT', fval1: '12', fval2: '8' },
+                { id: 5, title: 'Late Clock Out', val: '$267.04', wtd_badge: '-4.0%', t_lw: '-3.2%', t_ly: '+1.0%', w_lw: '-2.8%', w_ly: '+2.1%', icon: 'clock-arrow-down', footer1: 'VARIANCE', footer2: 'LY VAR', fval1: '240m', fval2: '180m' },
+                { id: 6, title: 'OT Loss', val: '$23.50', wtd_badge: '-1.2%', t_lw: '-1.0%', t_ly: '-0.5%', w_lw: '-0.8%', w_ly: '-0.2%', icon: 'zap', footer1: 'OT HOURS', footer2: 'LY OT', fval1: '1.2h', fval2: '0.9h' }
+            ],
+            hours: [
+                { id: 1, val: '5.31%' },
+                { id: 2, title: 'Actual Sales', val: '$32,862.63', wtd_badge: '-2.1%', t_lw: '-0.8%', t_ly: '+1.1%', w_lw: '-0.5%', w_ly: '+3.2%', icon: 'dollar-sign', footer1: 'SALES', footer2: 'LY SALES', fval1: '$32k', fval2: '$28k' },
+                { id: 3, title: 'Labor %', val: '18.2%', wtd_badge: '17.8%', t_lw: '-1.4%', t_ly: '-2.2%', w_lw: '-0.8%', w_ly: '-1.5%', icon: 'users', footer1: 'LABOR $', footer2: 'SALES', fval1: '$2.6k', fval2: '$14k' },
+                { id: 4, title: 'Early Clock In', val: '2:25', wtd_badge: '+0.8%', t_lw: '+0.5%', t_ly: '+1.5%', w_lw: '+0.4%', w_ly: '+1.2%', icon: 'clock-arrow-up', footer1: 'COUNT', footer2: 'LY COUNT', fval1: '12', fval2: '8' },
+                { id: 5, title: 'Late Clock Out', val: '20:20', wtd_badge: '-1.0%', t_lw: '-1.5%', t_ly: '+2.0%', w_lw: '-1.2%', w_ly: '+1.8%', icon: 'clock-arrow-down', footer1: 'VARIANCE', footer2: 'LY VAR', fval1: '1220m', fval2: '1100m' },
+                { id: 6, title: 'OT Loss', val: '2:00', wtd_badge: '-0.3%', t_lw: '-0.2%', t_ly: '-0.1%', w_lw: '-0.1%', w_ly: '-0.1%', icon: 'zap', footer1: 'OT HOURS', footer2: 'LY OT', fval1: '2.0h', fval2: '1.8h' }
+            ]
+        };
+
+        const historicalData = [
+            { date: "01/05/2026", store: "1018", sales: 32862.63, labor: 18.71, lossP: 0.96, total: "$314.65", early: "$36.61", late: "$267.04", ot: "$23.50", break: "$11.00" },
+            { date: "12/29/2025", store: "1018", sales: 58555.81, labor: 18.66, lossP: 1.46, total: "$855.45", early: "$275.48", late: "$358.62", ot: "$211.36", break: "$10.00" },
+            { date: "12/22/2025", store: "1018", sales: 55336.98, labor: 17.76, lossP: 1.28, total: "$708.21", early: "$82.78", late: "$500.83", ot: "$103.18", break: "$21.42" }
+        ];
+
+        let weeklyChart, trendChart;
+		let modalChart = null;
+let currentTimeframe = 'daily';
+let currentView = 'bar';
+let currentRange = [
+    new Date(new Date().setDate(new Date().getDate() - 6)),
+    new Date()
+];
+        let currentModalKPI = null;
+
+        // Calendar State
+		
+		        function initModalDatePicker() {
+            flatpickr("#modal-date-picker", {
+                mode: "range",
+                dateFormat: "M d, Y",
+                defaultDate: currentRange,
+                onClose: function(selectedDates) {
+                    if (selectedDates.length === 2) {
+                        currentRange = selectedDates;
+                        renderActiveModalView();
+                    }
+                }
+            });
+        }
+function switchTrendView(view) {
+    currentView = view;
+    const views = ['bar','line','table'];
+
+    views.forEach(v=>{
+        const btn=document.getElementById(`btn-view-${v}`);
+        if(!btn) return;
+        if(v===view) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    if(!document.getElementById('graph-modal').classList.contains('hidden')){
+        renderActiveModalView();
+    }
+}
+		        function bindModalEvents() {
+            const timeframeBtns = document.querySelectorAll('#modal-timeframe-tabs button');
+            timeframeBtns.forEach(btn => {
+                btn.onclick = () => {
+                    timeframeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTimeframe = btn.dataset.timeframe;
+                    renderActiveModalView();
+                };
+            });
+        }
+		        function renderActiveModalView() {
+            const chartDiv = document.getElementById('chart-container-div');
+            const tableDiv = document.getElementById('table-container-div');
+            if (currentView === 'table') {
+                chartDiv.classList.add('hidden');
+                tableDiv.classList.remove('hidden');
+                renderModalTable();
+            } else {
+                chartDiv.classList.remove('hidden');
+                tableDiv.classList.add('hidden');
+                renderModalChart();
+            }
+        }
+		        function getModalData(timeframe) {
+            let labels = [];
+            const start = new Date(currentRange[0]);
+            const end = new Date(currentRange[1]);
+            
+            if (timeframe === 'daily') {
+                let current = new Date(start);
+                while (current <= end) {
+                    labels.push(`${(current.getMonth()+1).toString().padStart(2, '0')}/${current.getDate().toString().padStart(2, '0')}`);
+                    current.setDate(current.getDate() + 1);
+                }
+            } else {
+                let current = new Date(start);
+                while (current <= end) {
+                    labels.push(`${(current.getMonth()+1).toString().padStart(2, '0')}/${current.getDate().toString().padStart(2, '0')}`);
+                    current.setDate(current.getDate() + 7);
+                }
+            }
+
+            if (labels.length === 0) labels = ["N/A"];
+            
+            const count = labels.length;
+            return {
+                labels,
+                actual: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1200),
+                lw: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1100),
+                ly: Array.from({length: count}, () => Math.floor(Math.random() * 1000) + 1000)
+            };
+        }
+		        function renderModalChart() {
+            const data = getModalData(currentTimeframe);
+            const ctx = document.getElementById('modalTrendChart').getContext('2d');
+            if (modalChart) modalChart.destroy();
+            modalChart = new Chart(ctx, {
+                type: currentView === 'line' ? 'line' : 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        { label: 'Actual', data: data.actual, backgroundColor: '#3b82f6', borderColor: '#3b82f6', borderRadius: 4, tension: 0.4 },
+                        { label: 'Last Week', data: data.lw, backgroundColor: '#94a3b8', borderColor: '#94a3b8', borderRadius: 4, tension: 0.4 },
+                        { label: 'Last Year', data: data.ly, backgroundColor: '#e2e8f0', borderColor: '#e2e8f0', borderRadius: 4, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { weight: 'bold', size: 9 } } } },
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 8 } } }, 
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: '700' } } } 
+                    }
+                }
+            });
+        }
+		        function renderModalTable() {
+            const data = getModalData(currentTimeframe);
+            const tbody = document.getElementById('modal-table-body');
+            tbody.innerHTML = data.labels.map((label, i) => {
+                const diff = data.actual[i] - data.lw[i];
+                const variance = ((diff / data.lw[i]) * 100).toFixed(1);
+                const colorClass = diff >= 0 ? 'text-emerald-600' : 'text-red-500';
+                const prefix = diff >= 0 ? '+' : '';
+                
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-bold text-slate-800">${label}</td>
+                        <td class="px-4 py-3 text-right font-bold">$${data.actual[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right text-slate-500">$${data.lw[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right text-slate-500">$${data.ly[i].toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right font-black ${colorClass}">${prefix}${variance}%</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            renderHeroTiles();
+            renderHistoryTable(historicalData);
+            initCharts();
+            setGlobalUnit('dollars');
+            setInterval(updateClock, 1000);
+			bindModalEvents();
+initModalDatePicker();
+			
+        };
+
+        function updateClock() {
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('live-clock').innerText = timeStr;
+            document.getElementById('banner-clock').innerText = timeStr;
+        }
+
+        function setGlobalUnit(unit) {
+            const data = kpiData[unit];
+            const btnD = document.getElementById('unit-dollars');
+const btnH = document.getElementById('unit-hours');
+
+if(btnD) btnD.className = unit === 'dollars'
+    ? "px-5 py-1.5 rounded-lg text-[9px] font-black bg-white shadow-sm text-blue-600"
+    : "px-5 py-1.5 rounded-lg text-[9px] font-black text-slate-400";
+
+if(btnH) btnH.className = unit === 'hours'
+    ? "px-5 py-1.5 rounded-lg text-[9px] font-black bg-white shadow-sm text-blue-600"
+    : "px-5 py-1.5 rounded-lg text-[9px] font-black text-slate-400";
+            document.getElementById('banner-val').innerText = data[0].val;
+            data.slice(1).forEach((item, idx) => {
+                const i = idx + 2;
+                if(document.getElementById(`title-${i}`)) document.getElementById(`title-${i}`).innerText = item.title;
+                if(document.getElementById(`val-${i}`)) document.getElementById(`val-${i}`).innerText = item.val;
+                if(document.getElementById(`badge-${i}`)) document.getElementById(`badge-${i}`).innerText = `WTD (${item.wtd_badge})`;
+                document.getElementById(`lw-today-${i}`).innerText = item.t_lw;
+                document.getElementById(`ly-today-${i}`).innerText = item.t_ly;
+                document.getElementById(`lw-wtd-${i}`).innerText = item.w_lw;
+                document.getElementById(`ly-wtd-${i}`).innerText = item.w_ly;
+                document.getElementById(`fval1-${i}`).innerText = item.fval1;
+                document.getElementById(`fval2-${i}`).innerText = item.fval2;
+            });
+            updateWeeklyChartData(unit);
+        }
+
+        function renderHeroTiles() {
+            const container = document.getElementById('hero-tiles-container');
+            let html = '';
+            const colors = { 2: 'bg-blue-500', 3: 'bg-rose-500', 4: 'bg-amber-500', 5: 'bg-orange-500', 6: 'bg-teal-500' };
+            const icons = { 2: 'dollar-sign', 3: 'users', 4: 'clock-arrow-up', 5: 'clock-arrow-down', 6: 'zap' };
+            for(let i=2; i<=6; i++) {
+                const data = kpiData.dollars.find(k => k.id == i);
+                html += `
+                <div class="metric-tile flex flex-col group cursor-pointer" onclick="openKPIModal(${i})">
+                    <div class="metric-top-bar ${colors[i]}"></div>
+                    <div class="p-4 pb-0">
+                        <div class="flex items-center justify-between mb-3 mt-1">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-8 h-8 flex items-center justify-center bg-slate-50 rounded-lg"><i data-lucide="${icons[i]}" class="w-4 h-4 text-slate-600"></i></div>
+                                <span class="text-[12px] font-black text-slate-800 uppercase tracking-tighter" id="title-${i}">...</span>
+                            </div>
+                            <div class="w-7 h-7 flex items-center justify-center bg-blue-600 rounded-lg text-white pointer-events-none">
+<i data-lucide="line-chart" class="w-2.5 h-2.5"></i></div>
+                        </div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <h3 class="text-3xl font-black text-slate-900 tracking-tighter" id="val-${i}">...</h3>
+                            <span id="badge-${i}" class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">WTD (...)</span>
+                        </div>
+                        <div class="flex flex-col gap-2 mb-4">
+                            <div class="grid grid-cols-3 text-[10px] font-black text-slate-400"><div></div><div class="text-center">LW</div><div class="text-center">LY</div></div>
+                            <div class="grid grid-cols-3 items-center">
+                                <div class="flex items-center gap-2 text-[10px] font-black text-slate-800"><div class="w-2 h-2 rounded-full bg-emerald-500"></div>TODAY</div>
+                                <div class="text-center text-[12px] font-black" id="lw-today-${i}">...</div>
+                                <div class="text-center text-[12px] font-black" id="ly-today-${i}">...</div>
+                            </div>
+                            <div class="grid grid-cols-3 items-center">
+                                <div class="flex items-center gap-2 text-[10px] font-black text-slate-800"><div class="w-2 h-2 rounded-full bg-orange-500"></div>WTD</div>
+                                <div class="text-center text-[12px] font-black" id="lw-wtd-${i}">...</div>
+                                <div class="text-center text-[12px] font-black" id="ly-wtd-${i}">...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-auto grid grid-cols-2 border-t border-slate-100 pt-3 p-4">
+                        <div class="border-r border-slate-100 pr-3">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-0.5">${data.footer1}</p>
+                            <p class="text-[13px] font-black text-slate-900" id="fval1-${i}">...</p>
+                        </div>
+                        <div class="pl-3">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-0.5">${data.footer2}</p>
+                            <p class="text-[13px] font-black text-slate-900" id="fval2-${i}">...</p>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            container.innerHTML = html;
+            initThreeIcons();
+            lucide.createIcons();
+        }
+
+        // CALENDAR POPUP LOGIC
+
+        // MODAL LOGIC
+        function openKPIModal(id) {
+            const unit = 'dollars';
+            const kpi = kpiData[unit].find(k => k.id == id);
+            currentModalKPI = kpi;
+            document.getElementById('modal-title').innerText = kpi.title;
+            document.getElementById('modal-val-pill').innerText = kpi.val;
+            document.getElementById('graph-modal').classList.remove('hidden');
+            const icons = {2:'dollar-sign',3:'users',4:'clock-arrow-up',5:'clock-arrow-down',6:'zap'};
+document.getElementById('modal-header-icon').innerHTML =
+`<i data-lucide="${icons[id]}" class="w-5 h-5"></i>`;
+            lucide.createIcons();
+            renderActiveModalView();
+        }
+
+        function closeModal() {
+            document.getElementById('graph-modal').classList.add('hidden');
+            if (modalChart) {
+    modalChart.destroy();
+    modalChart = null;
+}
+        }
+
+        function renderHistoryTable(data) {
+            const body = document.getElementById('historyBody');
+            body.innerHTML = data.map(row => `<tr><td class="p-3 sticky-col-1 bg-white border-b font-black text-blue-600">${row.date}</td><td class="p-3 sticky-col-2 bg-white border-b">${row.store}</td><td class="p-3 text-right font-black text-slate-900 border-b">$${row.sales.toLocaleString()}</td><td class="p-3 text-right text-slate-600 border-b">${row.labor}%</td><td class="p-3 text-right text-rose-600 font-black border-b">${row.lossP}%</td><td class="p-3 text-right text-slate-400 border-b">${row.total}</td><td class="p-3 text-right text-slate-400 border-b">${row.early}</td><td class="p-3 text-right text-slate-400 border-b">${row.late}</td><td class="p-3 text-right text-slate-400 border-b">${row.ot}</td><td class="p-3 text-right text-slate-400 border-b">${row.break}</td></tr>`).join('');
+        }
+
+        function initCharts() {
+            const wCtx = document.getElementById('weeklyLossChart').getContext('2d');
+            weeklyChart = new Chart(wCtx, {
+                type: 'bar', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [
+                    { label: 'Early', data: [150, 220, 180, 250, 450, 120, 100], backgroundColor: '#a855f7', stack: 'L' }, 
+                    { label: 'Late', data: [350, 450, 380, 550, 850, 280, 250], backgroundColor: '#3b82f6', stack: 'L' }, 
+                    { label: 'OT', data: [250, 300, 220, 400, 650, 200, 180], backgroundColor: '#1e3a8a', stack: 'L' }, 
+                    { label: 'Break', data: [100, 150, 120, 180, 300, 100, 80], backgroundColor: '#99f6e4', stack: 'L' }, 
+                    { label: 'Total', data: [850, 1120, 900, 1380, 2250, 700, 610], type: 'line', borderColor: '#334155', fill: false, tension: 0.1, pointRadius: 2 }
+                ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10, weight: 'bold' } } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, border: { display: false } } } }
+            });
+            const tCtx = document.getElementById('trendAnalysisChart').getContext('2d');
+            trendChart = new Chart(tCtx, {
+                type: 'bar', data: { labels: ['Jan 21', 'Jan 22', 'Jan 23', 'Jan 24', 'Jan 25', 'Jan 26', 'Jan 27'], datasets: [
+                    { label: 'Sales', data: [1800, 2400, 2400, 2500, 2700, 2600, 2300], backgroundColor: '#93c5fd', borderRadius: 4 }, 
+                    { label: 'Labor %', type: 'line', data: [2100, 1900, 2300, 2400, 2200, 2100, 1900], borderColor: '#1e293b', tension: 0.4, pointRadius: 2, fill: false },
+                    { label: 'Loss %', type: 'line', data: [1500, 1700, 1600, 1800, 1600, 1500, 1400], borderColor: '#ef4444', borderDash: [5, 5], tension: 0.4, pointRadius: 0, fill: false }
+                ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10, weight: 'bold' } } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, border: { display: false } } } }
+            });
+            populateWeeklyTable(); populateTrendTable();
+        }
+
+        function toggleView(chartId, tableId, btn) {
+            const chartDiv = document.getElementById(chartId);
+            const tableDiv = document.getElementById(tableId);
+            const icon = btn.querySelector('[data-lucide]');
+            if (chartDiv.classList.contains('hidden')) {
+                chartDiv.classList.remove('hidden'); tableDiv.classList.add('hidden');
+                if (icon) icon.setAttribute('data-lucide', 'layout-grid');
+            } else {
+                chartDiv.classList.add('hidden'); tableDiv.classList.remove('hidden');
+                if (icon) icon.setAttribute('data-lucide', 'bar-chart-2');
+                if (tableId === 'weekly-table-cont') populateWeeklyTable();
+                if (tableId === 'trend-table-cont') populateTrendTable();
+            }
+            lucide.createIcons();
+        }
+
+        function populateWeeklyTable() {
+            const labels = weeklyChart.data.labels, ds = weeklyChart.data.datasets;
+            document.getElementById('weekly-table-body').innerHTML = labels.map((l, i) => `<tr><td class="p-3">${l}</td><td class="p-3 text-right">${ds[0].data[i]}</td><td class="p-3 text-right">${ds[1].data[i]}</td><td class="p-3 text-right">${ds[2].data[i]}</td><td class="p-3 text-right">${ds[3].data[i]}</td><td class="p-3 text-right font-black">${ds[4].data[i]}</td></tr>`).join('');
+        }
+
+        function populateTrendTable() {
+            const labels = trendChart.data.labels, ds = trendChart.data.datasets;
+            document.getElementById('trend-table-body').innerHTML = labels.map((l, i) => `<tr><td class="p-3">${l}</td><td class="p-3 text-right">$${ds[0].data[i].toLocaleString()}</td><td class="p-3 text-right">${(ds[1].data[i]/100).toFixed(2)}%</td><td class="p-3 text-right text-rose-600">${(ds[2].data[i]/1000).toFixed(2)}%</td></tr>`).join('');
+        }
+
+        function updateTrendRange(days, btn) {
+            document.querySelectorAll('.range-btn').forEach(b => { b.classList.remove('toggle-active-dark'); b.classList.add('text-slate-400'); });
+            btn.classList.add('toggle-active-dark'); btn.classList.remove('text-slate-400');
+            const labels = [], sales = [], labor = [], loss = [];
+            for(let i=0; i<days; i++) { labels.push('Jan ' + (21+i)); sales.push(Math.floor(Math.random() * 1000) + 1800); labor.push(Math.floor(Math.random() * 500) + 1800); loss.push(Math.floor(Math.random() * 400) + 1400); }
+            trendChart.data.labels = labels; trendChart.data.datasets[0].data = sales; trendChart.data.datasets[1].data = labor; trendChart.data.datasets[2].data = loss;
+            trendChart.update(); populateTrendTable();
+        }
+
+        function updateWeeklyChartData(unit) {
+            if(!weeklyChart) return;
+            weeklyChart.data.datasets.forEach(ds => { ds.data = ds.data.map(v => Math.round(v * (Math.random() * 0.2 + 0.9))); });
+            weeklyChart.update(); populateWeeklyTable();
+        }
+
+        function initThreeIcons() {
+            const icons = [['top-three-container', 0x3b82f6, 'Icosahedron']];
+            icons.forEach(([id, color, type]) => createThreeIcon(id, color, type));
+        }
+
+        function createThreeIcon(containerId, colorValue, type) {
+            const container = document.getElementById(containerId);
+            if(!container) return;
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(32, 32);
+            container.innerHTML = ''; container.appendChild(renderer.domElement);
+            const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 0), new THREE.MeshPhongMaterial({ color: colorValue, emissive: colorValue, emissiveIntensity: 0.2, wireframe: true }));
+            scene.add(mesh);
+            const light = new THREE.PointLight(0xffffff, 1, 100); light.position.set(5, 5, 5); scene.add(light);
+            camera.position.z = 3.5;
+            function animate() { requestAnimationFrame(animate); mesh.rotation.x += 0.02; mesh.rotation.y += 0.02; renderer.render(scene, camera); }
+            animate();
+        }
+
+let isCollapsed = false;
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarTexts = document.querySelectorAll('.sidebar-text');
+    const icon = document.getElementById('collapse-icon');
+
+    if (isCollapsed) {
+        sidebar.style.width = '16rem';
+        sidebarTexts.forEach(el => el.style.display = 'inline');
+        icon.style.transform = 'rotate(0deg)';
+        isCollapsed = false;
+    } else {
+        sidebar.style.width = '80px';
+        sidebarTexts.forEach(el => el.style.display = 'none');
+        icon.style.transform = 'rotate(180deg)';
+        isCollapsed = true;
+    }
+
+    lucide.createIcons();   
+}
+	function handleRangeChange(val){
+    const el = document.getElementById('customRange');
+    if(!el) return;
+    if(val === 'custom'){ el.classList.add('show'); }
+    else{ el.classList.remove('show'); }
+}
+
+    </script>
+</body>
+</html>
