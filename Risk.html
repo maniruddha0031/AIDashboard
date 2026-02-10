@@ -188,6 +188,16 @@ body {
     background:#cbd5e0;
     border-radius:10px;
 }
+/* Sidebar active state */
+.sidebar-active {
+    background-color: #2D3748;
+    border-left: 4px solid #4299E1;
+    color: white !important;
+}
+
+.sidebar-active i {
+    color: white !important;
+}
 </style>
 </head>
 
@@ -207,11 +217,11 @@ body {
                 <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
                 <span class="sidebar-text">Store Health</span>
             </a>
-            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-compliance">
+            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-compliance">
                 <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i>
                 <span class="sidebar-text">Compliance</span>
             </a>
-            <a href="Risk.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-risk">
+            <a href="Risk.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-risk">
                 <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
                 <span class="sidebar-text">Risk Analysis</span>
             </a>
@@ -593,4 +603,5 @@ function handleRangeChange(val){
 </script>
 </div>
 </body>
+
 </html>
