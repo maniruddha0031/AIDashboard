@@ -122,6 +122,16 @@
     max-width:220px;
     opacity:1;
 }
+/* Sidebar active state */
+.sidebar-active {
+    background-color: #2D3748;
+    border-left: 4px solid #4299E1;
+    color: white !important;
+}
+
+.sidebar-active i {
+    color: white !important;
+}
     </style>
 </head>
 <body class="flex h-screen">
@@ -135,11 +145,11 @@
 
         <nav class="flex-1 mt-4">
             <div class="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sidebar-text">Analytics</div>
-            <a href="index.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-health">
+            <a href="index.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-health">
                 <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
                 <span class="sidebar-text">Store Health</span>
             </a>
-            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors sidebar-active" id="nav-compliance">
+            <a href="Compliance.html" class="nav-item flex items-center px-6 py-4 hover:bg-gray-800 transition-colors" id="nav-compliance">
                 <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i>
                 <span class="sidebar-text">Compliance</span>
             </a>
@@ -719,3 +729,4 @@ updateClock();
 </body>
 
 </html>
+
